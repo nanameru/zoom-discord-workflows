@@ -1,15 +1,12 @@
 """
 Canva API サムネイルジェネレーター
-講義タイトルからサムネイル画像を生成
+既存のCanvaテンプレートにAI生成テキストを挿入してサムネイル画像を生成
 """
 
 import os
 import requests
 import logging
 from typing import Optional, Dict
-from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont
-import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +14,12 @@ logger = logging.getLogger(__name__)
 class CanvaThumbnailGenerator:
     def __init__(self):
         self.api_key = os.getenv('CANVA_API_KEY')
+        self.template_id = os.getenv('CANVA_TEMPLATE_ID')  # 既存テンプレートID
         self.base_url = 'https://api.canva.com/rest/v1'
 
     def create_thumbnail(self, title: str, subtitle: str = '') -> Optional[str]:
         """
-        タイトルからサムネイルを生成
+        既存テンプレートにAI生成テキストを挿入してサムネイルを生成
 
         Args:
             title: メインタイトル
@@ -30,57 +28,96 @@ class CanvaThumbnailGenerator:
         Returns:
             生成されたサムネイルのURL（失敗時はNone）
         """
-        logger.info(f"サムネイル生成開始: {title}")
+        logger.info(f"テンプレートベースサムネイル生成開始: {title}")
 
-        # Canva API が利用可能な場合
-        if self.api_key:
-            thumbnail_url = self._create_with_canva(title, subtitle)
+        # Canva API が利用可能かつテンプレートIDが設定されている場合
+        if self.api_key and self.template_id:
+            thumbnail_url = self._create_from_template(title, subtitle)
             if thumbnail_url:
                 return thumbnail_url
 
-        # フォールバック: Pillowで基本的なサムネイルを生成
-        logger.info("Canva APIが利用できないため、Pillowでサムネイル生成")
-        return self._create_with_pillow(title, subtitle)
+        # APIキーまたはテンプレートIDが未設定の場合
+        if not self.api_key:
+            logger.warning("CANVA_API_KEY が設定されていません")
+        if not self.template_id:
+            logger.warning("CANVA_TEMPLATE_ID が設定されていません")
 
-    def _create_with_canva(self, title: str, subtitle: str = '') -> Optional[str]:
-        """Canva APIを使用してサムネイルを生成"""
+        logger.warning("Canva APIを使用できないため、サムネイル生成をスキップします")
+        return None
+
+    def _create_from_template(self, title: str, subtitle: str = '') -> Optional[str]:
+        """既存テンプレートからAI生成テキストを挿入してサムネイル生成"""
         try:
             headers = {
                 'Authorization': f'Bearer {self.api_key}',
                 'Content-Type': 'application/json'
             }
 
-            # デザイン作成リクエスト
-            design_data = {
-                'design_type': 'Presentation',
-                'title': f'講義サムネイル: {title[:30]}',
-                'template_id': None,  # カスタムテンプレートIDを指定可能
-                'elements': [
-                    {
-                        'type': 'text',
-                        'text': title,
-                        'position': {'x': 50, 'y': 100},
-                        'font_size': 36,
-                        'color': '#FFFFFF',
-                        'font_weight': 'bold'
-                    }
-                ]
+            # テンプレートからデザイン作成
+            logger.info(f"テンプレートID {self.template_id} を使用してデザイン作成")
+
+            # Autofill APIを使用してテンプレートにテキストを挿入
+            autofill_data = {
+                'brand_template_id': self.template_id,
+                'data': {
+                    'title': title[:60],  # タイトル文字数制限
+                    'subtitle': subtitle[:40] if subtitle else '',  # サブタイトル文字数制限
+                    'lecture_title': title,  # メインタイトル用
+                    'lecture_subtitle': subtitle if subtitle else '講義録画'  # サブタイトル用
+                }
             }
 
-            if subtitle:
-                design_data['elements'].append({
-                    'type': 'text',
-                    'text': subtitle,
-                    'position': {'x': 50, 'y': 150},
-                    'font_size': 24,
-                    'color': '#E0E0E0'
-                })
+            # Autofill APIエンドポイント呼び出し
+            response = requests.post(
+                f'{self.base_url}/autofills',
+                headers=headers,
+                json=autofill_data,
+                timeout=30
+            )
 
-            # デザイン作成
+            if response.status_code == 200:
+                autofill_result = response.json()
+                design_id = autofill_result.get('design', {}).get('id')
+
+                if design_id:
+                    logger.info(f"Autofill成功、デザインID: {design_id}")
+                    # デザインをエクスポート
+                    export_url = self._export_design(design_id, headers)
+                    if export_url:
+                        logger.info("テンプレートベースサムネイル生成成功")
+                        return export_url
+                else:
+                    logger.error("AutofillレスポンスにデザインIDが含まれていません")
+            else:
+                logger.error(f"Autofill API失敗: {response.status_code}")
+                logger.error(f"レスポンス: {response.text}")
+
+                # フォールバック: 通常のテンプレート複製方式
+                return self._create_from_template_fallback(title, subtitle, headers)
+
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Canva Autofill API呼び出し失敗: {str(e)}")
+        except Exception as e:
+            logger.warning(f"テンプレートベースサムネイル生成エラー: {str(e)}")
+
+        return None
+
+    def _create_from_template_fallback(self, title: str, subtitle: str, headers: Dict) -> Optional[str]:
+        """フォールバック: テンプレート複製後、手動でテキスト要素を更新"""
+        try:
+            # テンプレートを複製してデザイン作成
+            logger.info("フォールバック方式でテンプレート複製")
+
+            clone_data = {
+                'design_type': 'Presentation',
+                'title': f'講義サムネイル: {title[:30]}',
+                'clone_from_design_id': self.template_id
+            }
+
             response = requests.post(
                 f'{self.base_url}/designs',
                 headers=headers,
-                json=design_data,
+                json=clone_data,
                 timeout=30
             )
 
@@ -89,18 +126,56 @@ class CanvaThumbnailGenerator:
                 design_id = design_data.get('id')
 
                 if design_id:
-                    # 画像エクスポート
+                    # テキスト要素を更新（Design Editing API使用）
+                    self._update_text_elements(design_id, title, subtitle, headers)
+
+                    # エクスポート
                     export_url = self._export_design(design_id, headers)
                     if export_url:
-                        logger.info("Canvaサムネイル生成成功")
+                        logger.info("フォールバック方式でサムネイル生成成功")
                         return export_url
 
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Canva API呼び出し失敗: {str(e)}")
         except Exception as e:
-            logger.warning(f"Canvaサムネイル生成エラー: {str(e)}")
+            logger.error(f"フォールバック方式エラー: {str(e)}")
 
         return None
+
+    def _update_text_elements(self, design_id: str, title: str, subtitle: str, headers: Dict):
+        """デザイン内のテキスト要素を更新"""
+        try:
+            # Design Editing APIでテキスト要素を更新
+            # 注意: 実際のAPIエンドポイントはCanvaのドキュメントに従って調整が必要
+            update_data = {
+                'elements': [
+                    {
+                        'type': 'text',
+                        'id': 'main_title',  # テンプレート内の要素ID
+                        'text': title
+                    }
+                ]
+            }
+
+            if subtitle:
+                update_data['elements'].append({
+                    'type': 'text',
+                    'id': 'subtitle',  # テンプレート内の要素ID
+                    'text': subtitle
+                })
+
+            response = requests.put(
+                f'{self.base_url}/designs/{design_id}/elements',
+                headers=headers,
+                json=update_data,
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                logger.info("テキスト要素更新成功")
+            else:
+                logger.warning(f"テキスト要素更新失敗: {response.status_code}")
+
+        except Exception as e:
+            logger.warning(f"テキスト要素更新エラー: {str(e)}")
 
     def _export_design(self, design_id: str, headers: Dict) -> Optional[str]:
         """デザインを画像としてエクスポート"""
@@ -127,100 +202,3 @@ class CanvaThumbnailGenerator:
             logger.error(f"デザインエクスポートエラー: {str(e)}")
 
         return None
-
-    def _create_with_pillow(self, title: str, subtitle: str = '') -> Optional[str]:
-        """Pillowを使用してローカルでサムネイル生成"""
-        try:
-            # 画像サイズ（YouTube サムネイル推奨サイズ）
-            width, height = 1280, 720
-
-            # 背景色を作成（グラデーション風）
-            image = Image.new('RGB', (width, height), '#1a1a1a')
-            draw = ImageDraw.Draw(image)
-
-            # グラデーション背景を作成
-            for y in range(height):
-                gradient_color = int(26 + (y / height) * 40)  # 26から66まで
-                color = f'#{gradient_color:02x}{gradient_color:02x}{gradient_color:02x}'
-                draw.line([(0, y), (width, y)], fill=color)
-
-            # アクセントカラーの四角形を追加
-            accent_color = '#4A90E2'
-            draw.rectangle([0, 0, 10, height], fill=accent_color)
-            draw.rectangle([0, 0, width, 10], fill=accent_color)
-
-            # フォント設定（システムフォントを使用）
-            try:
-                # macOSの場合
-                title_font = ImageFont.truetype('/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc', 48)
-                subtitle_font = ImageFont.truetype('/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc', 28)
-            except:
-                try:
-                    # Windowsの場合
-                    title_font = ImageFont.truetype('meiryo.ttc', 48)
-                    subtitle_font = ImageFont.truetype('meiryo.ttc', 28)
-                except:
-                    # フォールバック
-                    title_font = ImageFont.load_default()
-                    subtitle_font = ImageFont.load_default()
-
-            # タイトルテキストを描画
-            title_lines = self._wrap_text(title, title_font, width - 100, draw)
-            title_y = height // 2 - (len(title_lines) * 60) // 2
-
-            for i, line in enumerate(title_lines):
-                text_bbox = draw.textbbox((0, 0), line, font=title_font)
-                text_width = text_bbox[2] - text_bbox[0]
-                x = (width - text_width) // 2
-
-                # 影を描画
-                draw.text((x + 2, title_y + i * 60 + 2), line, font=title_font, fill='#000000')
-                # メインテキストを描画
-                draw.text((x, title_y + i * 60), line, font=title_font, fill='#FFFFFF')
-
-            # サブタイトルを描画
-            if subtitle:
-                subtitle_bbox = draw.textbbox((0, 0), subtitle, font=subtitle_font)
-                subtitle_width = subtitle_bbox[2] - subtitle_bbox[0]
-                subtitle_x = (width - subtitle_width) // 2
-                subtitle_y = title_y + len(title_lines) * 60 + 20
-
-                # 影を描画
-                draw.text((subtitle_x + 1, subtitle_y + 1), subtitle, font=subtitle_font, fill='#000000')
-                # メインテキストを描画
-                draw.text((subtitle_x, subtitle_y), subtitle, font=subtitle_font, fill='#E0E0E0')
-
-            # 一時ファイルに保存
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
-                image.save(tmp_file.name, 'PNG', quality=95)
-                tmp_file_path = tmp_file.name
-
-            logger.info(f"Pillowサムネイル生成成功: {tmp_file_path}")
-            return tmp_file_path
-
-        except Exception as e:
-            logger.error(f"Pillowサムネイル生成エラー: {str(e)}")
-            return None
-
-    def _wrap_text(self, text: str, font, max_width: int, draw) -> list:
-        """テキストを指定幅で折り返し"""
-        words = text.split()
-        lines = []
-        current_line = ""
-
-        for word in words:
-            test_line = f"{current_line} {word}".strip()
-            bbox = draw.textbbox((0, 0), test_line, font=font)
-            width = bbox[2] - bbox[0]
-
-            if width <= max_width:
-                current_line = test_line
-            else:
-                if current_line:
-                    lines.append(current_line)
-                current_line = word
-
-        if current_line:
-            lines.append(current_line)
-
-        return lines[:3]  # 最大3行まで

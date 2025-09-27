@@ -49,9 +49,10 @@ GitHub リポジトリの Settings → Secrets and variables → Actions で以�
 | `ZOOM_API_SECRET` | Zoom APIシークレット | ✅ |
 | `OPENAI_API_KEY` | OpenAI APIキー（GPT-5対応） | ✅ |
 | `CANVA_API_KEY` | Canva APIキー | ⚠️ |
+| `CANVA_TEMPLATE_ID` | 既存Canvaテンプレートの ID | ⚠️ |
 | `DISCORD_WEBHOOK_URL` | Discord Webhook URL | ✅ |
 
-> ⚠️ Canva APIはEnterpriseアカウントが必要です。未設定の場合はPillowでサムネイル生成されます。
+> ⚠️ Canva APIはEnterpriseアカウントが必要です。既存のテンプレートにAI生成テキストを挿入します。未設定の場合はサムネイル生成をスキップします。
 
 ### 3. Zoom Webhook設定
 
@@ -112,17 +113,12 @@ logs/
 
 ## 🎨 サムネイル生成
 
-### Canva API使用時
+### Canva APIを使用した既存テンプレート活用
 
-- Design Creation APIで講義用テンプレート使用
-- タイトルを動的に挿入
-- 1280x720サイズで生成
-
-### Pillow使用時（フォールバック）
-
-- グラデーション背景
-- 日本語フォント対応
-- アクセントカラー配置
+- **Autofill API**: 既存テンプレートにAI生成テキストを自動挿入
+- **Design Editing API**: テンプレート複製後のテキスト要素更新（フォールバック）
+- **既存デザイン活用**: ブランド統一されたプロ品質のサムネイル
+- **動的テキスト挿入**: GPT-5生成タイトルをテンプレートに動的配置
 
 ## 📤 Discord投稿内容
 
@@ -147,7 +143,16 @@ logs/
 - GPT-5利用権限があるか確認
 - フォールバック機能で基本コンテンツは生成されます
 
-#### 2. Zoom録画取得失敗
+#### 2. Canva テンプレート関連エラー
+```
+⚠️ CANVA_TEMPLATE_ID が設定されていません
+❌ Autofill API失敗
+```
+- Canva APIキーとテンプレートIDを確認
+- テンプレートがAutofill対応か確認
+- Enterpriseアカウントが有効か確認
+
+#### 3. Zoom録画取得失敗
 ```
 ❌ 録画情報の取得に失敗しました
 ```
@@ -155,7 +160,7 @@ logs/
 - Meeting UUIDが正しいか確認
 - 録画が完了しているか確認
 
-#### 3. Discord投稿失敗
+#### 4. Discord投稿失敗
 ```
 ❌ Discord投稿に失敗しました
 ```
