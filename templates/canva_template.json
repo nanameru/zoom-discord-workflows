@@ -1,0 +1,69 @@
+{
+  "template_config": {
+    "name": "講義サムネイルテンプレート",
+    "description": "Zoom講義録画用のサムネイルテンプレート",
+    "dimensions": {
+      "width": 1280,
+      "height": 720
+    },
+    "background": {
+      "type": "gradient",
+      "colors": ["#1a1a1a", "#424242"],
+      "direction": "vertical"
+    },
+    "elements": [
+      {
+        "type": "rectangle",
+        "name": "accent_bar",
+        "position": { "x": 0, "y": 0 },
+        "size": { "width": 10, "height": 720 },
+        "color": "#4A90E2"
+      },
+      {
+        "type": "text",
+        "name": "main_title",
+        "position": { "x": 50, "y": 300 },
+        "font": {
+          "family": "Noto Sans CJK JP",
+          "size": 48,
+          "weight": "bold",
+          "color": "#FFFFFF"
+        },
+        "alignment": "left",
+        "max_width": 1180,
+        "placeholder": "講義タイトルがここに入ります"
+      },
+      {
+        "type": "text",
+        "name": "subtitle",
+        "position": { "x": 50, "y": 400 },
+        "font": {
+          "family": "Noto Sans CJK JP",
+          "size": 28,
+          "weight": "normal",
+          "color": "#E0E0E0"
+        },
+        "alignment": "left",
+        "max_width": 1180,
+        "placeholder": "サブタイトル（任意）"
+      },
+      {
+        "type": "icon",
+        "name": "play_icon",
+        "position": { "x": 1150, "y": 50 },
+        "size": { "width": 80, "height": 80 },
+        "icon": "play_circle",
+        "color": "#4A90E2"
+      }
+    ]
+  },
+  "autofill_mapping": {
+    "main_title": "{{lecture_title}}",
+    "subtitle": "{{lecture_subtitle}}"
+  },
+  "export_settings": {
+    "format": "PNG",
+    "quality": "high",
+    "dpi": 300
+  }
+}
