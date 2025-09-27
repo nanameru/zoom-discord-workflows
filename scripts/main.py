@@ -72,12 +72,17 @@ def main():
         # 3. Canvaでサムネイル生成
         logger.info("🎨 Canvaでサムネイル生成中...")
         canva_generator = CanvaThumbnailGenerator()
-        thumbnail_url = canva_generator.create_thumbnail(generated_content['title'])
 
-        if thumbnail_url:
-            logger.info("✅ サムネイル生成成功")
-        else:
-            logger.warning("⚠️ サムネイル生成に失敗、デフォルト画像を使用")
+        try:
+            thumbnail_url = canva_generator.create_thumbnail(generated_content['title'])
+            if thumbnail_url:
+                logger.info("✅ サムネイル生成成功")
+            else:
+                logger.error("❌ Canva API設定が不完全です（API KEY または TEMPLATE_ID が未設定）")
+                sys.exit(1)
+        except Exception as e:
+            logger.error(f"❌ サムネイル生成に失敗しました: {str(e)}")
+            sys.exit(1)
 
         # 4. Discordに投稿
         logger.info("📤 Discordに投稿中...")

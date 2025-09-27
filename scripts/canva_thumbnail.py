@@ -86,119 +86,41 @@ class CanvaThumbnailGenerator:
                     if export_url:
                         logger.info("テンプレートベースサムネイル生成成功")
                         return export_url
+                    else:
+                        raise Exception("デザインエクスポートに失敗しました")
                 else:
-                    logger.error("AutofillレスポンスにデザインIDが含まれていません")
+                    raise Exception(f"AutofillレスポンスにデザインIDが含まれていません: {autofill_result}")
             else:
-                logger.error(f"Autofill API失敗: {response.status_code}")
-                logger.error(f"レスポンス: {response.text}")
-
-                # フォールバック: 通常のテンプレート複製方式
-                return self._create_from_template_fallback(title, subtitle, headers)
+                raise Exception(f"Autofill API失敗: {response.status_code}, レスポンス: {response.text}")
 
         except requests.exceptions.RequestException as e:
-            logger.warning(f"Canva Autofill API呼び出し失敗: {str(e)}")
+            raise Exception(f"Canva Autofill API呼び出し失敗: {str(e)}")
         except Exception as e:
-            logger.warning(f"テンプレートベースサムネイル生成エラー: {str(e)}")
+            logger.error(f"テンプレートベースサムネイル生成エラー: {str(e)}")
+            raise e
 
-        return None
-
-    def _create_from_template_fallback(self, title: str, subtitle: str, headers: Dict) -> Optional[str]:
-        """フォールバック: テンプレート複製後、手動でテキスト要素を更新"""
-        try:
-            # テンプレートを複製してデザイン作成
-            logger.info("フォールバック方式でテンプレート複製")
-
-            clone_data = {
-                'design_type': 'Presentation',
-                'title': f'講義サムネイル: {title[:30]}',
-                'clone_from_design_id': self.template_id
-            }
-
-            response = requests.post(
-                f'{self.base_url}/designs',
-                headers=headers,
-                json=clone_data,
-                timeout=30
-            )
-
-            if response.status_code == 201:
-                design_data = response.json()
-                design_id = design_data.get('id')
-
-                if design_id:
-                    # テキスト要素を更新（Design Editing API使用）
-                    self._update_text_elements(design_id, title, subtitle, headers)
-
-                    # エクスポート
-                    export_url = self._export_design(design_id, headers)
-                    if export_url:
-                        logger.info("フォールバック方式でサムネイル生成成功")
-                        return export_url
-
-        except Exception as e:
-            logger.error(f"フォールバック方式エラー: {str(e)}")
-
-        return None
-
-    def _update_text_elements(self, design_id: str, title: str, subtitle: str, headers: Dict):
-        """デザイン内のテキスト要素を更新"""
-        try:
-            # Design Editing APIでテキスト要素を更新
-            # 注意: 実際のAPIエンドポイントはCanvaのドキュメントに従って調整が必要
-            update_data = {
-                'elements': [
-                    {
-                        'type': 'text',
-                        'id': 'main_title',  # テンプレート内の要素ID
-                        'text': title
-                    }
-                ]
-            }
-
-            if subtitle:
-                update_data['elements'].append({
-                    'type': 'text',
-                    'id': 'subtitle',  # テンプレート内の要素ID
-                    'text': subtitle
-                })
-
-            response = requests.put(
-                f'{self.base_url}/designs/{design_id}/elements',
-                headers=headers,
-                json=update_data,
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                logger.info("テキスト要素更新成功")
-            else:
-                logger.warning(f"テキスト要素更新失敗: {response.status_code}")
-
-        except Exception as e:
-            logger.warning(f"テキスト要素更新エラー: {str(e)}")
-
-    def _export_design(self, design_id: str, headers: Dict) -> Optional[str]:
+    def _export_design(self, design_id: str, headers: Dict) -> str:
         """デザインを画像としてエクスポート"""
-        try:
-            export_data = {
-                'format': 'PNG',
-                'quality': 'high',
-                'width': 1280,
-                'height': 720
-            }
+        export_data = {
+            'format': 'PNG',
+            'quality': 'high',
+            'width': 1280,
+            'height': 720
+        }
 
-            response = requests.post(
-                f'{self.base_url}/designs/{design_id}/export',
-                headers=headers,
-                json=export_data,
-                timeout=60
-            )
+        response = requests.post(
+            f'{self.base_url}/designs/{design_id}/export',
+            headers=headers,
+            json=export_data,
+            timeout=60
+        )
 
-            if response.status_code == 200:
-                export_result = response.json()
-                return export_result.get('export_url')
-
-        except Exception as e:
-            logger.error(f"デザインエクスポートエラー: {str(e)}")
-
-        return None
+        if response.status_code == 200:
+            export_result = response.json()
+            export_url = export_result.get('export_url')
+            if export_url:
+                return export_url
+            else:
+                raise Exception(f"エクスポートレスポンスにURLが含まれていません: {export_result}")
+        else:
+            raise Exception(f"デザインエクスポート失敗: {response.status_code}, レスポンス: {response.text}")

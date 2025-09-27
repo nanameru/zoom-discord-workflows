@@ -71,9 +71,7 @@ class GPT5Generator:
 
         except Exception as e:
             logger.error(f"GPT-5 API呼び出しエラー: {str(e)}")
-
-            # フォールバック：基本的なタイトル生成
-            return self._generate_fallback_content(recording_data, meeting_topic)
+            raise e
 
     def _get_system_prompt(self) -> str:
         """システムプロンプトを取得"""
@@ -161,41 +159,3 @@ class GPT5Generator:
             logger.error(f"JSON解析エラー: {str(e)}")
             return None
 
-    def _generate_fallback_content(self, recording_data: Dict, meeting_topic: str) -> Dict:
-        """フォールバック用の基本コンテンツ生成"""
-        logger.info("フォールバックコンテンツを生成")
-
-        topic = recording_data.get('topic', meeting_topic or '講義録画')
-        duration = recording_data.get('duration', 0)
-
-        # 基本的なタイトル生成
-        if '講座' in topic or '講義' in topic:
-            title = f"📚 {topic}"
-        elif 'セミナー' in topic or 'ワークショップ' in topic:
-            title = f"🎯 {topic}"
-        elif 'ミーティング' in topic or '会議' in topic:
-            title = f"💼 {topic}"
-        else:
-            title = f"🎥 {topic}"
-
-        # 基本的な説明文生成
-        description = f"録画時間: {duration}分\n\n"
-        description += f"{topic}の録画です。"
-
-        if duration > 60:
-            description += "内容豊富な講義となっております。"
-
-        description += "\n\nぜひご視聴ください！"
-
-        # 基本的なタグ生成
-        tags = ["講義", "録画"]
-        if 'AI' in topic.upper():
-            tags.append("AI")
-        if 'プログラミング' in topic:
-            tags.append("プログラミング")
-
-        return {
-            'title': title[:100],
-            'description': description[:500],
-            'tags': tags
-        }
