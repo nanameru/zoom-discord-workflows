@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 from zoom_handler import ZoomHandler
 from gpt5_generator import GPT5Generator
-from canva_thumbnail import CanvaThumbnailGenerator
+# from canva_thumbnail import CanvaThumbnailGenerator  # 後日実装
 from discord_poster import DiscordPoster
 
 
@@ -69,20 +69,9 @@ def main():
 
         logger.info(f"✅ コンテンツ生成成功: {generated_content['title']}")
 
-        # 3. Canvaでサムネイル生成
-        logger.info("🎨 Canvaでサムネイル生成中...")
-        canva_generator = CanvaThumbnailGenerator()
-
-        try:
-            thumbnail_url = canva_generator.create_thumbnail(generated_content['title'])
-            if thumbnail_url:
-                logger.info("✅ サムネイル生成成功")
-            else:
-                logger.error("❌ Canva API設定が不完全です（API KEY または TEMPLATE_ID が未設定）")
-                sys.exit(1)
-        except Exception as e:
-            logger.error(f"❌ サムネイル生成に失敗しました: {str(e)}")
-            sys.exit(1)
+        # 3. サムネイル生成（現在は無効化）
+        logger.info("🎨 サムネイル生成をスキップ（Canva実装は後日対応）")
+        thumbnail_url = None
 
         # 4. Discordに投稿
         logger.info("📤 Discordに投稿中...")

@@ -1,13 +1,13 @@
 # 🎯 Zoom → Discord 自動投稿ワークフロー
 
-Zoomミーティングの録画完了後、GPT-5でタイトル生成、Canvaでサムネイル作成、Discordフォーラムに自動投稿するGitHub Actionsワークフローです。
+Zoomミーティングの録画完了後、GPT-5でタイトル生成、Discordフォーラムに自動投稿するGitHub Actionsワークフローです。
 
 ## 🌟 特徴
 
 - **🤖 GPT-5連携**: 最新のGPT-5 APIで魅力的なタイトルと説明文を自動生成
-- **🎨 サムネイル自動生成**: Canva APIまたはPillowでサムネイル画像を生成
 - **📤 Discord自動投稿**: フォーラムチャンネルに講義情報を整理して投稿
 - **🔄 完全自動化**: Zoom Webhookからの完全自動実行
+- **🎨 サムネイル生成**: 後日Canva API連携予定
 
 ## 📁 プロジェクト構造
 
@@ -48,11 +48,9 @@ GitHub リポジトリの Settings → Secrets and variables → Actions で以�
 | `ZOOM_API_KEY` | Zoom APIキー | ✅ |
 | `ZOOM_API_SECRET` | Zoom APIシークレット | ✅ |
 | `OPENAI_API_KEY` | OpenAI APIキー（GPT-5対応） | ✅ |
-| `CANVA_API_KEY` | Canva APIキー | ⚠️ |
-| `CANVA_TEMPLATE_ID` | 既存Canvaテンプレートの ID | ⚠️ |
 | `DISCORD_WEBHOOK_URL` | Discord Webhook URL | ✅ |
 
-> ⚠️ Canva APIはEnterpriseアカウントが必要です。既存のテンプレートにAI生成テキストを挿入します。未設定の場合はサムネイル生成をスキップします。
+> ℹ️ Canva API連携は後日実装予定です。現在はサムネイル生成をスキップして動作します。
 
 ### 3. Zoom Webhook設定
 
@@ -113,11 +111,12 @@ logs/
 
 ## 🎨 サムネイル生成
 
-### Canva APIを使用した既存テンプレート活用
+現在はサムネイル生成機能を無効化しており、Discord投稿時にサムネイル画像は添付されません。
 
-- **Autofill API**: 既存テンプレートにAI生成テキストを自動挿入
-- **既存デザイン活用**: ブランド統一されたプロ品質のサムネイル
-- **動的テキスト挿入**: GPT-5生成タイトルをテンプレートに動的配置
+### 今後の実装予定
+- **Canva API連携**: 既存テンプレートを活用したサムネイル自動生成
+- **動的テキスト挿入**: GPT-5生成タイトルをテンプレートに挿入
+- **ブランド統一**: 一貫したデザインでのサムネイル生成
 
 ## 📤 Discord投稿内容
 
@@ -126,7 +125,6 @@ logs/
 - **📝 タイトル**: GPT-5生成の魅力的なタイトル
 - **📄 説明**: 講義概要（200-300文字）
 - **🎥 録画リンク**: Zoom録画視聴URL
-- **🖼️ サムネイル**: 自動生成されたサムネイル画像
 - **🏷️ タグ**: 関連キーワード
 - **⏰ タイムスタンプ**: 投稿日時
 
@@ -141,16 +139,7 @@ logs/
 - OpenAI APIキーが有効か確認
 - GPT-5利用権限があるか確認
 
-#### 2. Canva テンプレート関連エラー
-```
-⚠️ CANVA_TEMPLATE_ID が設定されていません
-❌ Autofill API失敗
-```
-- Canva APIキーとテンプレートIDを確認
-- テンプレートがAutofill対応か確認
-- Enterpriseアカウントが有効か確認
-
-#### 3. Zoom録画取得失敗
+#### 2. Zoom録画取得失敗
 ```
 ❌ 録画情報の取得に失敗しました
 ```
@@ -158,7 +147,7 @@ logs/
 - Meeting UUIDが正しいか確認
 - 録画が完了しているか確認
 
-#### 4. Discord投稿失敗
+#### 3. Discord投稿失敗
 ```
 ❌ Discord投稿に失敗しました
 ```
