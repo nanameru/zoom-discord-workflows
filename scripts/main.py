@@ -58,6 +58,20 @@ def main():
 
         logger.info(f"✅ 録画情報取得成功: {recording_data.get('topic', 'N/A')}")
 
+        # 1.5. 録画時間チェック（設定された最小時間以上の場合のみ処理を継続）
+        duration_minutes = recording_data.get('duration', 0)
+        min_duration_threshold = int(os.getenv('MIN_RECORDING_DURATION', '30'))  # 最小録画時間（分）
+
+        logger.info(f"📊 録画時間: {duration_minutes}分")
+
+        if duration_minutes < min_duration_threshold:
+            logger.info(f"⏳ 録画時間が{min_duration_threshold}分未満のため、処理をスキップします")
+            logger.info(f"   現在の録画時間: {duration_minutes}分 < 閾値: {min_duration_threshold}分")
+            logger.info("✨ 処理を正常終了します（投稿なし）")
+            return
+
+        logger.info(f"✅ 録画時間が{min_duration_threshold}分以上のため、処理を継続します")
+
         # 2. GPT-5でタイトルと説明を生成
         logger.info("🤖 GPT-5でコンテンツ生成中...")
         gpt5_generator = GPT5Generator()
