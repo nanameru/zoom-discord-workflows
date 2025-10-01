@@ -8,7 +8,6 @@ Zoomミーティングの録画完了後、GPT-5でタイトル生成、Discord�
 - **📤 Discord自動投稿**: フォーラムチャンネルに講義情報を整理して投稿
 - **🔄 完全自動化**: Zoom Webhookからの完全自動実行
 - **⏱️ 時間フィルタリング**: 設定した最小録画時間（デフォルト30分）以上のみ処理
-- **🎨 サムネイル生成**: 後日Canva API連携予定
 
 ## 📁 プロジェクト構造
 
@@ -21,11 +20,8 @@ zoom-discord-workflows/
 │   ├── main.py                     # メイン処理スクリプト
 │   ├── zoom_handler.py             # Zoom API ハンドラー
 │   ├── gpt5_generator.py           # GPT-5 コンテンツ生成
-│   ├── canva_thumbnail.py          # Canva/Pillow サムネイル生成
 │   ├── discord_poster.py           # Discord 投稿ハンドラー
 │   └── requirements.txt            # Python依存関係
-├── templates/
-│   └── canva_template.json         # Canvaテンプレート設定
 ├── logs/                           # ログファイル
 ├── .env.example                    # 環境変数テンプレート
 └── README.md
@@ -102,7 +98,6 @@ reasoning_effort="standard"      # 高品質な推論
 
 - **GPT-5**: $1.25/1M入力 + $10/1M出力
 - **GPT-5-mini**: 25%のコスト（代替案）
-- **Canva API**: Enterpriseプラン料金
 
 ### ログ確認
 
@@ -113,15 +108,6 @@ logs/
 └── zoom_discord_YYYYMMDD_HHMMSS.log
 ```
 
-## 🎨 サムネイル生成
-
-現在はサムネイル生成機能を無効化しており、Discord投稿時にサムネイル画像は添付されません。
-
-### 今後の実装予定
-- **Canva API連携**: 既存テンプレートを活用したサムネイル自動生成
-- **動的テキスト挿入**: GPT-5生成タイトルをテンプレートに挿入
-- **ブランド統一**: 一貫したデザインでのサムネイル生成
-
 ## 📤 Discord投稿内容
 
 生成される投稿には以下が含まれます：
@@ -129,7 +115,7 @@ logs/
 - **📝 タイトル**: GPT-5生成の魅力的なタイトル
 - **📄 説明**: 講義概要（200-300文字）
 - **🎥 録画リンク**: Zoom録画視聴URL
-- **🏷️ タグ**: 関連キーワード
+- **🏷️ タグ**: 関連キーワード（3-5個）
 - **⏰ タイムスタンプ**: 投稿日時
 
 ## 🛠️ トラブルシューティング
@@ -192,10 +178,13 @@ poster.send_test_message()
 
 ## 🔄 更新履歴
 
+### v1.1.0 (2025-10-01)
+- サムネイル生成機能を削除（シンプル化）
+- 録画時間フィルタリング機能を追加
+
 ### v1.0.0 (2025-09-27)
 - 初回リリース
 - GPT-5 API連携実装
-- Canva API/Pillow サムネイル生成
 - Discord Webhook投稿機能
 - GitHub Actions ワークフロー
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Zoom Recording to Discord Auto-Poster
-Zoomの録画完了後、GPT-5でタイトル生成、Canvaでサムネイル作成、Discordに投稿
+Zoomの録画完了後、GPT-5でタイトル生成、Discordに投稿
 """
 
 import os
@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 
 from zoom_handler import ZoomHandler
 from gpt5_generator import GPT5Generator
-# from canva_thumbnail import CanvaThumbnailGenerator  # 後日実装
 from discord_poster import DiscordPoster
 
 
@@ -83,18 +82,14 @@ def main():
 
         logger.info(f"✅ コンテンツ生成成功: {generated_content['title']}")
 
-        # 3. サムネイル生成（現在は無効化）
-        logger.info("🎨 サムネイル生成をスキップ（Canva実装は後日対応）")
-        thumbnail_url = None
-
-        # 4. Discordに投稿
+        # 3. Discordに投稿
         logger.info("📤 Discordに投稿中...")
         discord_poster = DiscordPoster()
         success = discord_poster.post_to_forum(
             title=generated_content['title'],
             description=generated_content['description'],
             zoom_url=recording_data.get('share_url', ''),
-            thumbnail_url=thumbnail_url,
+            thumbnail_url=None,
             tags=generated_content.get('tags', [])
         )
 
