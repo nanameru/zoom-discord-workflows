@@ -47,6 +47,7 @@ class DiscordPoster:
 
             # Discord Webhook形式のペイロードを作成
             payload = {
+                "thread_name": title[:100],  # フォーラムチャンネル用（タイトルを最大100文字）
                 "embeds": [embed],
                 "username": "Zoom講義Bot",
                 "avatar_url": "https://cdn-icons-png.flaticon.com/512/2111/2111728.png"
