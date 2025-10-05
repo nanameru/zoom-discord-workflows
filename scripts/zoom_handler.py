@@ -1,10 +1,10 @@
 """
 Zoom API ハンドラー
 録画情報とトランスクリプトの取得
+Server-to-Server OAuth対応
 """
 
 import os
-import jwt
 import time
 import requests
 import logging
@@ -16,25 +16,48 @@ logger = logging.getLogger(__name__)
 
 class ZoomHandler:
     def __init__(self):
-        self.api_key = os.getenv('ZOOM_API_KEY')
-        self.api_secret = os.getenv('ZOOM_API_SECRET')
+        # Server-to-Server OAuth認証情報
+        self.account_id = os.getenv('ZOOM_ACCOUNT_ID')
+        self.client_id = os.getenv('ZOOM_CLIENT_ID')
+        self.client_secret = os.getenv('ZOOM_CLIENT_SECRET')
         self.base_url = 'https://api.zoom.us/v2'
+        
+        if not all([self.account_id, self.client_id, self.client_secret]):
+            raise ValueError("Zoom API credentials not found in environment variables. Required: ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET")
+        
+        self.access_token = None
+        self.token_expires_at = 0
 
-        if not self.api_key or not self.api_secret:
-            raise ValueError("Zoom API credentials not found in environment variables")
-
-    def _generate_jwt_token(self) -> str:
-        """JWTトークンを生成"""
-        payload = {
-            'iss': self.api_key,
-            'exp': int(time.time() + 3600)  # 1時間有効
-        }
-        return jwt.encode(payload, self.api_secret, algorithm='HS256')
+    def _get_access_token(self) -> str:
+        """Server-to-Server OAuthアクセストークンを取得"""
+        # トークンがまだ有効な場合は再利用
+        if self.access_token and time.time() < self.token_expires_at:
+            return self.access_token
+        
+        # 新しいトークンを取得
+        token_url = f'https://zoom.us/oauth/token?grant_type=account_credentials&account_id={self.account_id}'
+        
+        response = requests.post(
+            token_url,
+            auth=(self.client_id, self.client_secret),
+            headers={'Content-Type': 'application/x-www-form-urlencoded'}
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            self.access_token = data['access_token']
+            # トークンの有効期限を設定（少し余裕を持たせて5分前に更新）
+            self.token_expires_at = time.time() + data.get('expires_in', 3600) - 300
+            logger.info("✅ Zoom access token取得成功")
+            return self.access_token
+        else:
+            logger.error(f"❌ Zoom access token取得失敗: {response.status_code} {response.text}")
+            raise Exception(f"Failed to get Zoom access token: {response.status_code}")
 
     def _make_request(self, endpoint: str, method: str = 'GET', params: Dict = None) -> Optional[Dict]:
         """Zoom APIリクエストを実行"""
         try:
-            token = self._generate_jwt_token()
+            token = self._get_access_token()
             headers = {
                 'Authorization': f'Bearer {token}',
                 'Content-Type': 'application/json'
