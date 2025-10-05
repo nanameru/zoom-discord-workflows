@@ -4,19 +4,16 @@
  * このWorkerはZoom WebhookからGitHub Actions repository_dispatchへの橋渡しを行います
  */
 
-// 設定（Cloudflare Workers環境変数で設定）
-const GITHUB_TOKEN = GITHUB_PAT; // 環境変数から取得
-const GITHUB_OWNER = 'nanameru'; // あなたのGitHubユーザー名
-const GITHUB_REPO = 'zoom-discord-workflows'; // リポジトリ名
-
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request))
-})
+export default {
+  async fetch(request, env, ctx) {
+    return handleRequest(request, env)
+  }
+}
 
 /**
  * メインのリクエストハンドラー
  */
-async function handleRequest(request) {
+async function handleRequest(request, env) {
   // CORS対応
   if (request.method === 'OPTIONS') {
     return handleCORS()
@@ -33,13 +30,13 @@ async function handleRequest(request) {
     // Zoomのエンドポイント検証リクエスト（初回設定時）
     if (body.event === 'endpoint.url_validation') {
       console.log('📝 Zoom endpoint validation')
-      return handleZoomValidation(body)
+      return await handleZoomValidation(body, env)
     }
 
     // 録画完了イベント
     if (body.event === 'recording.completed') {
       console.log('🎥 Recording completed event received')
-      return await handleRecordingCompleted(body)
+      return await handleRecordingCompleted(body, env)
     }
 
     // その他のイベントはログのみ
@@ -61,10 +58,41 @@ async function handleRequest(request) {
 /**
  * Zoomのエンドポイント検証を処理
  */
-function handleZoomValidation(body) {
+async function handleZoomValidation(body, env) {
+  const plainToken = body.payload.plainToken
+  
+  // Secret Tokenが設定されている場合はHMAC署名を生成
+  let encryptedToken = body.payload.encryptedToken
+  
+  if (env.ZOOM_SECRET_TOKEN) {
+    // HMAC-SHA256で署名生成
+    const encoder = new TextEncoder()
+    const keyData = encoder.encode(env.ZOOM_SECRET_TOKEN)
+    const messageData = encoder.encode(plainToken)
+    
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    )
+    
+    const signature = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      messageData
+    )
+    
+    // バイト配列を16進数文字列に変換
+    encryptedToken = Array.from(new Uint8Array(signature))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+  
   const response = {
-    plainToken: body.payload.plainToken,
-    encryptedToken: body.payload.encryptedToken
+    plainToken: plainToken,
+    encryptedToken: encryptedToken
   }
   
   return new Response(JSON.stringify(response), {
@@ -76,7 +104,7 @@ function handleZoomValidation(body) {
 /**
  * 録画完了イベントを処理してGitHub Actionsをトリガー
  */
-async function handleRecordingCompleted(body) {
+async function handleRecordingCompleted(body, env) {
   const payload = body.payload.object
   
   // 録画情報を抽出
@@ -97,7 +125,7 @@ async function handleRecordingCompleted(body) {
     duration: duration,
     start_time: startTime,
     host_email: hostEmail
-  })
+  }, env)
 
   if (githubResponse.ok) {
     console.log('✅ GitHub Actions triggered successfully')
@@ -128,8 +156,8 @@ async function handleRecordingCompleted(body) {
 /**
  * GitHub Actions repository_dispatchをトリガー
  */
-async function triggerGitHubActions(clientPayload) {
-  const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/dispatches`
+async function triggerGitHubActions(clientPayload, env) {
+  const url = `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/dispatches`
   
   const body = {
     event_type: 'zoom_recording_completed',
@@ -139,7 +167,7 @@ async function triggerGitHubActions(clientPayload) {
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${GITHUB_TOKEN}`,
+      'Authorization': `Bearer ${env.GITHUB_PAT}`,
       'Accept': 'application/vnd.github.v3+json',
       'User-Agent': 'Cloudflare-Worker-Zoom-Bridge',
       'Content-Type': 'application/json'
