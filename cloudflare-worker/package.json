@@ -1,0 +1,26 @@
+{
+  "name": "zoom-github-bridge-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker to bridge Zoom Webhooks to GitHub Actions",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production",
+    "logs": "wrangler tail",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "zoom",
+    "webhook",
+    "github-actions"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
+

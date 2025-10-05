@@ -1,0 +1,26 @@
+# Wrangler設定ファイル
+# Cloudflare Workersのデプロイ設定
+
+name = "zoom-github-bridge"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# 環境変数（GitHub Personal Access Token）
+# デプロイ時にコマンドラインから設定するか、
+# Cloudflareダッシュボードで設定してください
+#
+# コマンドライン設定方法:
+# wrangler secret put GITHUB_PAT
+
+[vars]
+GITHUB_OWNER = "nanameru"
+GITHUB_REPO = "zoom-discord-workflows"
+
+# 開発環境設定
+[env.development]
+name = "zoom-github-bridge-dev"
+
+# 本番環境設定
+[env.production]
+name = "zoom-github-bridge"
+
