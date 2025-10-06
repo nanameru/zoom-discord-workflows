@@ -37,10 +37,12 @@ jobs:
 
     - name: Process Zoom recording and post to Discord
       env:
-        ZOOM_API_KEY: ${{ secrets.ZOOM_API_KEY }}
-        ZOOM_API_SECRET: ${{ secrets.ZOOM_API_SECRET }}
+        ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+        ZOOM_CLIENT_ID: ${{ secrets.ZOOM_CLIENT_ID }}
+        ZOOM_CLIENT_SECRET: ${{ secrets.ZOOM_CLIENT_SECRET }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        MIN_RECORDING_DURATION: ${{ secrets.MIN_RECORDING_DURATION }}
         MEETING_UUID: ${{ github.event.client_payload.meeting_uuid || github.event.inputs.meeting_uuid }}
         MEETING_TOPIC: ${{ github.event.client_payload.meeting_topic || github.event.inputs.meeting_topic }}
       run: |
