@@ -6,23 +6,25 @@
 
 | API | 用途 | 必須度 | 取得難易度 |
 |-----|------|--------|----------|
-| Zoom API (JWT) | 録画情報取得 | ✅ 必須 | ⭐⭐ 中 |
+| Zoom API (Server-to-Server OAuth) | 録画情報取得 | ✅ 必須 | ⭐⭐ 中 |
 | OpenAI API | GPT-5コンテンツ生成 | ✅ 必須 | ⭐ 易 |
 | Discord Webhook | Discord投稿 | ✅ 必須 | ⭐ 易 |
 | GitHub Token | repository_dispatch | ⚠️ 推奨 | ⭐ 易 |
 
 ---
 
-## 1️⃣ Zoom API (JWT) の取得方法
+## 1️⃣ Zoom API (Server-to-Server OAuth) の取得方法
 
 ### 📍 概要
 
-Zoom APIを使用して録画情報を取得するために、JWT認証方式のアプリを作成します。
+Zoom APIを使用して録画情報を取得するために、Server-to-Server OAuth認証方式のアプリを作成します。
+
+> ⚠️ **重要**: JWT認証は2023年に非推奨となりました。このガイドでは推奨されている**Server-to-Server OAuth**を使用します。
 
 ### 🔗 公式リンク
 
 - **Zoom App Marketplace**: https://marketplace.zoom.us/
-- **JWT App作成ガイド**: https://marketplace.zoom.us/docs/guides/build/jwt-app
+- **Server-to-Server OAuth ガイド**: https://marketplace.zoom.us/docs/guides/build/server-to-server-oauth-app
 
 ### 📝 手順
 
@@ -32,19 +34,17 @@ Zoom APIを使用して録画情報を取得するために、JWT認証方式の
 2. Zoomアカウントでログイン
 3. 右上の「**Develop**」→「**Build App**」をクリック
 
-#### ステップ2: JWT App を作成
+#### ステップ2: Server-to-Server OAuth App を作成
 
-1. アプリタイプ選択画面で「**JWT**」を選択
+1. アプリタイプ選択画面で「**Server-to-Server OAuth**」を選択
 2. 「**Create**」をクリック
-
-> ⚠️ **注意**: 2023年以降、ZoomはJWT認証を非推奨としています。本番環境では**Server-to-Server OAuth**への移行を推奨します。
 
 #### ステップ3: 基本情報を入力
 
 以下の情報を入力します：
 
 - **App Name**: 任意（例: "Zoom to Discord Automation"）
-- **Short Description**: アプリの簡単な説明
+- **Short Description**: アプリの簡単な説明（例: "Zoom録画を自動的にDiscordに投稿"）
 - **Company Name**: 会社名または個人名
 - **Developer Contact**: メールアドレス
 
@@ -55,17 +55,27 @@ Zoom APIを使用して録画情報を取得するために、JWT認証方式の
 「**App Credentials**」セクションで以下の情報を確認・コピーします：
 
 ```plaintext
-API Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-API Secret: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+Account ID: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Client ID: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+Client Secret: zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 ```
 
-この2つの値をメモ帳などに保存してください。
+この3つの値をメモ帳などに保存してください。
 
-#### ステップ5: 機能を有効化
+#### ステップ5: スコープ（Scopes）を設定 ⭐ 重要
 
-「**Feature**」タブに移動し、必要に応じて以下を有効化：
+「**Scopes**」タブに移動し、必要なスコープを追加します：
 
-- **Event Subscriptions**: Webhook通知を受け取る場合（後述）
+**必須スコープ：**
+- ✅ `cloud_recording:read:list_recording_files` - 録画ファイルの一覧取得
+- ✅ `cloud_recording:read:list_user_recordings` - ユーザーの録画一覧取得
+
+**推奨スコープ（トランスクリプトも取得する場合）：**
+- ✅ `recording:read:admin` - 録画管理者権限
+
+検索バーで「**cloud_recording**」を検索し、該当するスコープにチェックを入れてください。
+
+「**Continue**」をクリックして次へ。
 
 #### ステップ6: アプリを有効化
 
@@ -73,15 +83,18 @@ API Secret: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 
 ### ✅ 確認事項
 
-- [ ] API Key を取得した
-- [ ] API Secret を取得した
+- [ ] Account ID を取得した
+- [ ] Client ID を取得した
+- [ ] Client Secret を取得した
+- [ ] 必要なスコープ（cloud_recording:read:*）を追加した
 - [ ] アプリを有効化した
 
 ### 🎯 GitHub Secretsに設定
 
 ```yaml
-ZOOM_API_KEY: <取得したAPI Key>
-ZOOM_API_SECRET: <取得したAPI Secret>
+ZOOM_ACCOUNT_ID: <取得したAccount ID>
+ZOOM_CLIENT_ID: <取得したClient ID>
+ZOOM_CLIENT_SECRET: <取得したClient Secret>
 ```
 
 ---
@@ -336,8 +349,9 @@ curl -X POST \
 
 | Name | Value |
 |------|-------|
-| `ZOOM_API_KEY` | Zoom API Key |
-| `ZOOM_API_SECRET` | Zoom API Secret |
+| `ZOOM_ACCOUNT_ID` | Zoom Account ID |
+| `ZOOM_CLIENT_ID` | Zoom Client ID |
+| `ZOOM_CLIENT_SECRET` | Zoom Client Secret |
 | `OPENAI_API_KEY` | OpenAI API Key |
 | `DISCORD_WEBHOOK_URL` | Discord Webhook URL |
 | `MIN_RECORDING_DURATION` | `30`（任意: 最小録画時間） |
@@ -347,8 +361,9 @@ curl -X POST \
 Secretsページに以下が表示されればOK：
 
 ```
-✅ ZOOM_API_KEY
-✅ ZOOM_API_SECRET
+✅ ZOOM_ACCOUNT_ID
+✅ ZOOM_CLIENT_ID
+✅ ZOOM_CLIENT_SECRET
 ✅ OPENAI_API_KEY
 ✅ DISCORD_WEBHOOK_URL
 ✅ MIN_RECORDING_DURATION
@@ -385,7 +400,8 @@ Secretsページに以下が表示されればOK：
 
 | エラーメッセージ | 原因 | 対処法 |
 |----------------|------|--------|
-| `❌ 録画情報の取得に失敗` | Zoom API認証エラー | API KeyとSecretを再確認 |
+| `❌ 録画情報の取得に失敗` | Zoom API認証エラー | Account ID、Client ID、Client Secretを再確認 |
+| `Invalid access token, does not contain scopes` | 必要なスコープが未設定 | Zoom AppのScopesタブで`cloud_recording:read:*`を追加 |
 | `❌ GPT-5 API呼び出しエラー` | OpenAI APIキーエラー | APIキーと課金設定を確認 |
 | `❌ Discord投稿に失敗` | Webhook URLエラー | Webhook URLを再確認 |
 

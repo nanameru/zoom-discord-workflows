@@ -4,6 +4,7 @@
 name = "zoom-github-bridge"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+workers_dev = true
 
 # 環境変数（GitHub Personal Access Token）
 # デプロイ時にコマンドラインから設定するか、
