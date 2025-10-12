@@ -42,21 +42,32 @@ GitHub リポジトリの Settings → Secrets and variables → Actions で以�
 
 | Secret名 | 説明 | 必須 |
 |---------|------|------|
-| `ZOOM_API_KEY` | Zoom APIキー | ✅ |
-| `ZOOM_API_SECRET` | Zoom APIシークレット | ✅ |
+| `ZOOM_ACCOUNT_ID` | Zoom Account ID（Server-to-Server OAuth） | ✅ |
+| `ZOOM_CLIENT_ID` | Zoom Client ID（Server-to-Server OAuth） | ✅ |
+| `ZOOM_CLIENT_SECRET` | Zoom Client Secret（Server-to-Server OAuth） | ✅ |
 | `OPENAI_API_KEY` | OpenAI APIキー（GPT-5対応） | ✅ |
 | `DISCORD_WEBHOOK_URL` | Discord Webhook URL | ✅ |
 | `MIN_RECORDING_DURATION` | 最小録画時間（分）デフォルト: 30 | ⚠️ |
 
 > ℹ️ Canva API連携は後日実装予定です。現在はサムネイル生成をスキップして動作します。
 
-### 3. Zoom Webhook設定
+### 3. Zoom API設定
+
+詳細な設定方法は [API_SETUP_GUIDE.md](./API_SETUP_GUIDE.md) を参照してください。
+
+**必須スコープ**:
+- `cloud_recording:read:list_recording_files`
+- `cloud_recording:read:list_user_recordings`
+
+### 4. Zoom Webhook設定（オプション）
+
+完全自動化する場合：
 
 1. [Zoom Marketplace](https://marketplace.zoom.us/)でWebhook-only app を作成
 2. Webhook設定で `recording.completed` イベントを購読
 3. WebhookエンドポイントURLを設定（GitHub repository dispatch経由）
 
-### 4. Discord Webhook設定
+### 5. Discord Webhook設定
 
 1. Discordサーバーの管理画面でWebhookを作成
 2. フォーラムチャンネルを対象に設定
@@ -132,10 +143,14 @@ logs/
 #### 2. Zoom録画取得失敗
 ```
 ❌ 録画情報の取得に失敗しました
+Invalid access token, does not contain scopes
 ```
-- Zoom API認証情報を確認
+- Zoom API認証情報（Account ID、Client ID、Client Secret）を確認
+- **必須スコープが設定されているか確認**（`cloud_recording:read:*`）
 - Meeting UUIDが正しいか確認
 - 録画が完了しているか確認
+
+詳細は [API_SETUP_GUIDE.md](./API_SETUP_GUIDE.md) を参照してください。
 
 #### 3. 録画時間によるスキップ
 ```
@@ -177,6 +192,11 @@ poster.send_test_message()
 ```
 
 ## 🔄 更新履歴
+
+### v1.2.0 (2025-10-12)
+- **[重要]** Zoom認証方式をJWTからServer-to-Server OAuthに移行
+- API_SETUP_GUIDE.mdを追加（詳細なセットアップ手順）
+- 必須スコープの明記とトラブルシューティング追加
 
 ### v1.1.0 (2025-10-01)
 - サムネイル生成機能を削除（シンプル化）
